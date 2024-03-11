@@ -18,7 +18,7 @@
  * Perhaps some imports are not essential. For sure the code could be shorter, but It is my first GUI and at least it works :D (I hope)
  * 
  *  
- * @author Isaac Vieco-Martí
+ * @author Isaac Vieco-Martí (2024)
  *  
  */
 
