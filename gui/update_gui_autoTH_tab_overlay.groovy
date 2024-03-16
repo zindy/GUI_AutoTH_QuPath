@@ -1,9 +1,12 @@
 /* Update Tab pane:  GUI for using Auto-Threshold methods 
  * 
  * This is the update for this script: https://github.com/iviecomarti/GUI_AutoTH_QuPath/blob/main/gui/gui_AutoTH_QuPath.groovy
+ *@yau-lim (2023) did the original core funcionality of the Auto-Threshold in this script: https://gist.github.com/yau-lim/3ed5ae04e82e02939b419afc11dc918c
+ *All the credits for @yau-lim
  * 
  * Updates: 
  * - Thanks to @EP.Zindy now the GUI appears as a tab and some deprecated methods have been removed
+ * https://forum.image.sc/t/applying-automatic-threshold-method-in-qupath/88287/19
  * -The main function to create the output is splited into three, to make overlay functions easier.
  * -Preview and Stop Preview options added. Thanks @yau-lim for sharing the code
  * 
