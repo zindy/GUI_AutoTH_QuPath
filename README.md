@@ -11,7 +11,7 @@ This discussion about Auto-Threshold started here: https://forum.image.sc/t/appl
 @iviecomarti did the GUI arround and modified a bit the functions for the Auto-TH
 
 
-@zindy removed deprecated libraries and make posible the GUI as a tab
+@zindy removed deprecated libraries and made posible that  the GUI appears as  a tab
 
 The inspiration to do the GUI was the "Create thresholder" pane into QuPath. The idea was to make it familiar to the user. 
 
