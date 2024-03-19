@@ -5,7 +5,7 @@ The script list the channels for Fluorescence, H&E and H-DAB images. Tooltips ap
 
 This discussion about Auto-Threshold started here: https://forum.image.sc/t/applying-automatic-threshold-method-in-qupath/88287
 
-@yau-lim did the original core funcionality of the Auto-Threshold in this script: https://gist.github.com/yau-lim/3ed5ae04e82e02939b419afc11dc918c
+@yau-lim did the original core funcionality of the Auto-Threshold in this script: https://github.com/yau-lim/QuPath-Auto-Threshold
 
 
 @iviecomarti did the GUI arround and modified a bit the functions for the Auto-TH.
