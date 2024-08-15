@@ -26,6 +26,7 @@ import javafx.scene.control.Label
 import javafx.scene.control.Tooltip
 import javafx.scene.control.Tab
 import javafx.scene.layout.GridPane
+import javafx.scene.control.ScrollPane
 import javafx.stage.Stage
 import qupath.lib.gui.QuPathGUI
 import qupath.fx.dialogs.Dialogs
@@ -45,6 +46,8 @@ import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.Spinner;
 import ij.IJ;
 import qupath.opencv.tools.MultiscaleFeatures.MultiscaleFeature;
+import qupath.lib.roi.ROIs
+import qupath.lib.regions.ImagePlane
 
 
 
@@ -63,6 +66,8 @@ Platform.runLater {
     panelTabs.add(newTab)
     //This selects the new tab
     gui.getAnalysisTabPane().getSelectionModel().select(newTab);    
+    //This makes the new tab undockable
+    gui.mainPaneManager.getAnalysisTabPane().makeTabsUndockable() 
 }
 
 // Remove all the additions made to the Analysis panel, based on the id above
@@ -80,8 +85,7 @@ def RemoveTab(panelTabs, id) {
     }
 }
 
-
-GridPane buildPane() {
+ScrollPane buildPane() {
     def qupath = QuPathGUI.getInstance()
     
     
@@ -89,6 +93,9 @@ GridPane buildPane() {
     // Auto-Threshold Methods///
     ////////////////////////////
     def options = ["Huang", "Otsu","Triangle","Intermodes", "IsoData", "IJ_IsoData", "Li", "MaxEntropy", "Mean", "MinError", "Minimum", "Moments",  "Percentile", "RenyiEntropy", "Shanbhag",  "Yen"]
+    ScrollPane sp = new ScrollPane();
+    sp.setFitToWidth(true);
+
     def pane = new GridPane()
     def combo = new ComboBox<>(FXCollections.observableArrayList(options))
     combo.getSelectionModel().selectFirst()
@@ -154,7 +161,7 @@ GridPane buildPane() {
     row++
     downsampleTitle = new Label("Image Downsample")
     downsampleTitle.setStyle("-fx-font-weight: bold")
-    pane.add(downsampleTitle, 0,row, 1, 1)
+    pane.add(downsampleTitle, 0,row, 2, 1)
    
     //Viewer dependent downsample
     def cbAutoDownsample= new CheckBox("Auto-Downsample")
@@ -181,9 +188,9 @@ GridPane buildPane() {
     ///////////////////////
    row++ 
    row++
-   classificationTittle = new Label("Classifier settings")
-   classificationTittle.setStyle("-fx-font-weight: bold")
-   pane.add(classificationTittle, 0,row, 1, 1)
+   classificationTitle = new Label("Classifier settings")
+   classificationTitle.setStyle("-fx-font-weight: bold")
+   pane.add(classificationTitle, 0,row, 2, 1)
    
    
    //classifier downsample
@@ -219,12 +226,12 @@ GridPane buildPane() {
     pane.add(labelSigmaSpinner, 0, row, 1, 1)
     pane.add(sigmaSpinner, 1, row, 1, 1)
    
-   //Above TH
-    def comboAvobe = new ComboBox<PathClass>(qupath.getAvailablePathClasses())
-    comboAvobe.getSelectionModel().selectFirst()
-    comboAvobe.setTooltip(new Tooltip("Above Threshold Classification"))
-    def labelComboAvobe = new Label("Above")
-    labelComboAvobe.setLabelFor(comboAvobe)
+    //Above TH
+    def comboAbove = new ComboBox<PathClass>(qupath.getAvailablePathClasses())
+    comboAbove.getSelectionModel().select("Positive") //.selectFirst()
+    comboAbove.setTooltip(new Tooltip("Above Threshold Classification"))
+    def labelComboAbove = new Label("Above")
+    labelComboAbove.setLabelFor(comboAbove)
     
     //Below TH
     def comboBelow = new ComboBox<PathClass>(qupath.getAvailablePathClasses())
@@ -234,8 +241,8 @@ GridPane buildPane() {
     labelComboBelow.setLabelFor(comboBelow)
     
     row++
-    pane.add(labelComboAvobe, 0, row, 1, 1)
-    pane.add(comboAvobe, 1, row, 1, 1)
+    pane.add(labelComboAbove, 0, row, 2, 1)
+    pane.add(comboAbove, 1, row, 1, 1)
     row++
     pane.add(labelComboBelow, 0, row, 1, 1)
     pane.add(comboBelow, 1, row, 1, 1)
@@ -250,10 +257,9 @@ GridPane buildPane() {
     
    row++
    row++
-   postTittle = new Label("Preview Classifier")
-   postTittle.setStyle("-fx-font-weight: bold")
-   pane.add(postTittle, 0,row, 1, 1)
-    
+   previewTitle = new Label("Preview Classifier")
+   previewTitle.setStyle("-fx-font-weight: bold")
+   pane.add(previewTitle, 0,row, 2, 1)
     
     
     //Start preview
@@ -265,33 +271,19 @@ GridPane buildPane() {
         
         
                
-        def objects =[]
+        def selectedObject = getSelectedObject()
         
-        getSelectedObjects().forEach {
-           objects << it 
-        }
-   
-        
-        if (objects.isEmpty()) {
-            lastParentObjects.clear()
-            lastAnnotation = null
-            Dialogs.showErrorMessage("Create detection",
-                    "Please draw some objects")
-            return
-        }
-        
-              
         //Downsample of the img
         def downsampleAT = downsampleDecision(cbAutoDownsample,comboResolutions)
       
                            
            
         //We apply the function to create classifier. 
-        classifierPreview= classifierCreation(objects[0],  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAvobe.getValue(), comboBelow.getValue())
+        classifierPreview= classifierCreation(selectedObject,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAbove.getValue(), comboBelow.getValue())
        
        //here we take the 0th element since the function returns the threshold and the classifier
         previewSegmentation(classifierPreview[0])
-       
+        
     }
    
     
@@ -321,9 +313,9 @@ GridPane buildPane() {
    row++ 
    row++
    row++
-   postTittle = new Label("Post-processing settings")
-   postTittle.setStyle("-fx-font-weight: bold")
-   pane.add(postTittle, 0,row, 1, 1)
+   postTitle = new Label("Post-processing settings")
+   postTitle.setStyle("-fx-font-weight: bold")
+   pane.add(postTitle, 0,row, 2, 1)
     
     
     //minvalue
@@ -396,9 +388,9 @@ GridPane buildPane() {
    row++
    row++
    row++
-   actionsTittle = new Label("Output")
-   actionsTittle.setStyle("-fx-font-weight: bold")
-   pane.add(actionsTittle, 0,row, 1, 1)
+   actionsTitle = new Label("Output")
+   actionsTitle.setStyle("-fx-font-weight: bold")
+   pane.add(actionsTitle, 0,row, 2, 1)
    
    
    
@@ -425,9 +417,9 @@ GridPane buildPane() {
     row++
     row++
     row++
-    runningTittle1 = new Label("Running Option 1: Run For Parent Class")
-    runningTittle1.setStyle("-fx-font-weight: bold")
-    pane.add(runningTittle1, 0,row, 2, 1)
+    runningTitle1 = new Label("Running Option 1: Run For Parent Class")
+    runningTitle1.setStyle("-fx-font-weight: bold")
+    pane.add(runningTitle1, 0,row, 2, 1)
    
 
    
@@ -457,14 +449,6 @@ GridPane buildPane() {
         //funciton to decide at the end, basically gets the objects with the selected class
         def objects = decisionParent(comboParent.getValue().toString())
         
-        if (objects.isEmpty()) {
-            lastParentObjects.clear()
-            lastAnnotation = null
-            Dialogs.showErrorMessage("Create detection",
-                    "Please draw some objects")
-            return
-        }
-        
               
         //Downsample of the img
         def downsampleAT = downsampleDecision(cbAutoDownsample,comboResolutions)
@@ -477,9 +461,9 @@ GridPane buildPane() {
           
           selectObjects(object)
           
-          classifierPX= classifierCreation(object,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAvobe.getValue(), comboBelow.getValue())
+          classifierPX= classifierCreation(object,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAbove.getValue(), comboBelow.getValue())
           
-          actionRunClassifier(object,combo.getValue(),classifierPX[0],classifierPX[1],comboOutput.getValue(),minValueSpinner.getValue(), minHoleSpinner.getValue(), postProcessingOptions.join(','),comboAvobe.getValue(), comboBelow.getValue())
+          actionRunClassifier(object,combo.getValue(),classifierPX[0],classifierPX[1],comboOutput.getValue(),minValueSpinner.getValue(), minHoleSpinner.getValue(), postProcessingOptions.join(','),comboAbove.getValue(), comboBelow.getValue())
         }
         
         //Delete parents
@@ -501,9 +485,9 @@ GridPane buildPane() {
    row++
    row++
    row++
-   runningTittle2 = new Label("Running Option 2: Run For Selected")
-   runningTittle2.setStyle("-fx-font-weight: bold")
-   pane.add(runningTittle2, 0,row, 2, 1)
+   runningTitle2 = new Label("Running Option 2: Run For Selected")
+   runningTitle2.setStyle("-fx-font-weight: bold")
+   pane.add(runningTitle2, 0,row, 2, 1)
    
     
     
@@ -514,21 +498,7 @@ GridPane buildPane() {
         
         //funciton to decide at the end, basically gets the objects with the selected class
                
-        def objects =[]
-        
-        getSelectedObjects().forEach {
-           objects << it 
-        }
-   
-        
-        if (objects.isEmpty()) {
-            lastParentObjects.clear()
-            lastAnnotation = null
-            Dialogs.showErrorMessage("Create detection",
-                    "Please draw some objects")
-            return
-        }
-        
+        def objects = getSelectedObjects()
               
         //Downsample of the img
         def downsampleAT = downsampleDecision(cbAutoDownsample,comboResolutions)
@@ -541,9 +511,9 @@ GridPane buildPane() {
             
           
           selectObjects(object)
-          classifierPX= classifierCreation(object,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAvobe.getValue(), comboBelow.getValue())
+          classifierPX= classifierCreation(object,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAbove.getValue(), comboBelow.getValue())
           
-          actionRunClassifier(object,combo.getValue(),classifierPX[0],classifierPX[1],comboOutput.getValue(),minValueSpinner.getValue(), minHoleSpinner.getValue(), postProcessingOptions.join(','),comboAvobe.getValue(), comboBelow.getValue())
+          actionRunClassifier(object,combo.getValue(),classifierPX[0],classifierPX[1],comboOutput.getValue(),minValueSpinner.getValue(), minHoleSpinner.getValue(), postProcessingOptions.join(','),comboAbove.getValue(), comboBelow.getValue())
         }
         
         //Delete parents
@@ -563,10 +533,10 @@ GridPane buildPane() {
     pane.setHgap(10)
     pane.setVgap(5)
     pane.setPadding(new Insets(5))
-    GridPaneUtils.setToExpandGridPaneWidth(combo, btnSelected,comboChannel,comboAvobe,comboBelow,comboParent,comboResolutions,comboResolutionsClassifier,comboOutput,btnRunParents,btnPreview,btnStopPreview,comboPrefilter,floorValueSpinner,sigmaSpinner,minValueSpinner,minHoleSpinner)
+    GridPaneUtils.setToExpandGridPaneWidth(combo, btnSelected,comboChannel,comboAbove,comboBelow,comboParent,comboResolutions,comboResolutionsClassifier,comboOutput,btnRunParents,btnPreview,btnStopPreview,comboPrefilter,floorValueSpinner,sigmaSpinner,minValueSpinner,minHoleSpinner)
 
-    
-    return pane
+    sp.setContent(pane);
+    return sp
 }
 
 
@@ -599,6 +569,11 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
     def imageData = getCurrentImageData()
     def imageType = imageData.getImageType()
     def server = imageData.getServer()
+    
+    // We need this in case no annotation is passed
+    def plane = ImagePlane.getDefaultPlane()
+    def pathROI = ROIs.createRectangleROI(0, 0, server.getWidth(), server.getHeight(), plane)
+
     def cal = server.getPixelCalibration()
     def classifierChannel
 
@@ -639,8 +614,9 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
 
 
     // Determine threshold value
-    logger.info("Calculating threshold value using ${thresholdMethod} method on ${annotation}")
-    ROI pathROI = annotation.getROI() // Get QuPath ROI
+    if (annotation != null)
+        pathROI = annotation.getROI() // Get QuPath ROI
+    
     PathImage pathImage = IJTools.convertToImagePlus(server, RegionRequest.createInstance(server.getPath(), thresholdDownsample, pathROI)) // Get PathImage within bounding box of annotation
     def ijRoi = IJTools.convertToIJRoi(pathROI, pathImage) // Convert QuPath ROI into ImageJ ROI
     ImagePlus imagePlus = pathImage.getImage() // Convert PathImage into ImagePlus
@@ -664,6 +640,9 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
         thresholdValue = thresholdFloor
     }
 
+    logger.info("Threshold value using ${thresholdMethod} method on ${annotation} - Value = ${thresholdValue}")
+
+    previewTitle.setText("Preview Classifier - ${thresholdMethod}=${String.format('%.2f', thresholdValue)}")
 
     // Define parameters for pixel classifier
     def resolution = cal.createScaledInstance(classifierDownsample, classifierDownsample)
@@ -917,7 +896,7 @@ def previewSegmentation(classifier) {
           
         def quPath = QuPathGUI.getInstance()
         OverlayOptions overlayOption = quPath.getOverlayOptions()
-        overlayOption.setPixelClassificationRegionFilter(RegionFilter.StandardRegionFilters.ANY_ANNOTATIONS)
+        overlayOption.setPixelClassificationRegionFilter(RegionFilter.StandardRegionFilters.EVERYWHERE)
     
         PixelClassificationOverlay previewOverlay = PixelClassificationOverlay.create(overlayOption, classifier)
         previewOverlay.setLivePrediction(true)
@@ -938,9 +917,4 @@ def previewSegmentation(classifier) {
   
      
  }
- 
-
- 
- 
- 
  
