@@ -18,7 +18,6 @@
 
 import javafx.application.Platform
 import javafx.geometry.Insets
-import javafx.scene.Scene
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
@@ -27,25 +26,14 @@ import javafx.scene.control.Tooltip
 import javafx.scene.control.Tab
 import javafx.scene.layout.GridPane
 import javafx.scene.control.ScrollPane
-import javafx.stage.Stage
 import qupath.lib.gui.QuPathGUI
-import qupath.fx.dialogs.Dialogs
-import qupath.lib.gui.tools.GuiTools
 import qupath.fx.utils.GridPaneUtils
-import qupath.lib.objects.PathObject
-import qupath.lib.objects.PathObjectTools
-import qupath.lib.objects.PathObjects
 import qupath.lib.objects.classes.PathClass
-import qupath.lib.roi.GeometryTools
 import javafx.collections.FXCollections
 import qupath.fx.utils.FXUtils
-import qupath.lib.plugins.parameters.ParameterList;
-import qupath.process.gui.commands.ml.ClassificationResolution;
-import qupath.lib.images.ImageData;
-import javafx.scene.control.SpinnerValueFactory;
-import javafx.scene.control.Spinner;
-import ij.IJ;
-import qupath.opencv.tools.MultiscaleFeatures.MultiscaleFeature;
+import javafx.scene.control.SpinnerValueFactory
+import javafx.scene.control.Spinner
+import qupath.opencv.tools.MultiscaleFeatures.MultiscaleFeature
 import qupath.lib.roi.ROIs
 import qupath.lib.regions.ImagePlane
 
@@ -54,24 +42,25 @@ import qupath.lib.regions.ImagePlane
 //Platform.runLater { buildStage().show()}
 
 def customId = "autothreshold_tab"
+
 Platform.runLater {
     gui = QuPathGUI.getInstance()
     panelTabs = gui.getAnalysisTabPane().getTabs()
-    RemoveTab(panelTabs,customId)
-    
+    removeTab(panelTabs, customId)
+
     def pane = buildPane()
     Tab newTab = new Tab("Auto-Threshold", pane)
     newTab.setId(customId)
     newTab.setTooltip(new Tooltip("Multiplex class selection"))
     panelTabs.add(newTab)
     //This selects the new tab
-    gui.getAnalysisTabPane().getSelectionModel().select(newTab);    
+    gui.getAnalysisTabPane().getSelectionModel().select(newTab)
     //This makes the new tab undockable
-    gui.mainPaneManager.getAnalysisTabPane().makeTabsUndockable() 
+    gui.mainPaneManager.getAnalysisTabPane().makeTabsUndockable()
 }
 
 // Remove all the additions made to the Analysis panel, based on the id above
-def RemoveTab(panelTabs, id) {
+def removeTab(panelTabs, id) {
     while(1) {
         hasElements = false
         for (var tabItem : panelTabs) {
@@ -81,282 +70,242 @@ def RemoveTab(panelTabs, id) {
                 break
             }
         }
-        if (!hasElements) break
+        if (!hasElements)
+            break
     }
 }
 
 ScrollPane buildPane() {
     def qupath = QuPathGUI.getInstance()
-    
-    
+
+
     ////////////////////////////
     // Auto-Threshold Methods///
     ////////////////////////////
     def options = ["Huang", "Otsu","Triangle","Intermodes", "IsoData", "IJ_IsoData", "Li", "MaxEntropy", "Mean", "MinError", "Minimum", "Moments",  "Percentile", "RenyiEntropy", "Shanbhag",  "Yen"]
-    ScrollPane sp = new ScrollPane();
-    sp.setFitToWidth(true);
+    ScrollPane sp = new ScrollPane()
+    sp.setFitToWidth(true)
 
     def pane = new GridPane()
     def combo = new ComboBox<>(FXCollections.observableArrayList(options))
+
     combo.getSelectionModel().selectFirst()
     combo.setTooltip(new Tooltip("Choose the auto threshold"))
     def labelCombo = new Label("Auto Threshold method")
     labelCombo.setLabelFor(combo)
-    
 
     int row = 0
     pane.add(labelCombo, 0, row, 1, 1)
     pane.add(combo, 1, row, 1, 1)
-   
-   
+
     //Select the channel
-   
+
     def channelOptions = []
     if(getCurrentImageData().getImageType().toString().contains("H&E")) {
         channelOptions = ["Red","Green","Blue","Hematoxylin","Eosin","Residual","Average"]
-       
     }else if(getCurrentImageData().getImageType().toString().contains("H-DAB")) {
-       channelOptions = ["Red","Green","Blue","Hematoxylin","DAB","Residual","Average"]
-       
+        channelOptions = ["Red","Green","Blue","Hematoxylin","DAB","Residual","Average"]
     } else if (getCurrentImageData().getImageType().toString().contains("Fluorescence")) {
-       
-       def avg = "Average"
-       channelOptions = getCurrentServer().getMetadata().getChannels().collect { c -> c.name }
-       
-       channelOptions << avg
+        def avg = "Average"
+        channelOptions = getCurrentServer().getMetadata().getChannels().collect { c -> c.name }
 
-       
+        channelOptions << avg
     }
-   
-   
+
     def comboChannel = new ComboBox<>(FXCollections.observableArrayList(channelOptions))
     comboChannel.getSelectionModel().selectFirst()
     comboChannel.setTooltip(new Tooltip("Select the channel"))
     def labelcomboChannel = new Label("Channel")
     //labelCombo.setLabelFor(combo)
-   
+
     row++
-   
+
     pane.add(labelcomboChannel, 0, row, 1, 1)
     pane.add(comboChannel, 1, row, 1, 1)
-    
-    
+
     //Floor Value
-    def floorValueSpinner = new Spinner<>(new SpinnerValueFactory.DoubleSpinnerValueFactory(0, 255.0, 0.0, 1.0));
-    floorValueSpinner.setEditable(true);
-    FXUtils.restrictTextFieldInputToNumber(floorValueSpinner.getEditor(), true);
+    def floorValueSpinner = new Spinner<>(new SpinnerValueFactory.DoubleSpinnerValueFactory(0, 255.0, 0.0, 1.0))
+    floorValueSpinner.setEditable(true)
+    FXUtils.restrictTextFieldInputToNumber(floorValueSpinner.getEditor(), true)
     floorValueSpinner.setTooltip(new Tooltip("Set a threshold floor value in case auto threshold is too low. Set 0 to disable"))
     def labelfloorValueSpinner = new Label("Floor value")
-    
+
     row++
     pane.add(labelfloorValueSpinner, 0, row, 1, 1)
     pane.add(floorValueSpinner, 1, row, 1, 1)
-    
-    
+
     ////////////////////
     //IMAGE DOWNSAMPLE//
     ////////////////////
-    
+
     row++
     row++
     downsampleTitle = new Label("Image Downsample")
     downsampleTitle.setStyle("-fx-font-weight: bold")
     pane.add(downsampleTitle, 0,row, 2, 1)
-   
+
     //Viewer dependent downsample
     def cbAutoDownsample= new CheckBox("Auto-Downsample")
     cbAutoDownsample.setSelected(false)
     cbAutoDownsample.setTooltip(new Tooltip("If checked, the downsample will be adapted from the current viewer."))
 
-    row++;
+    row++
     pane.add(cbAutoDownsample, 0, row, 2, 1)
-       
-   
-   
+
     //Manual downsample
     def optionsDownsample = [1,2,4,8,16,32,64]
     def comboResolutions = new ComboBox<>(FXCollections.observableArrayList(optionsDownsample));
     comboResolutions.setTooltip(new Tooltip("If Auto-Downsample is not checked \n 1:Full, 2:Very high, 4:High, 8:Moderate, 16:Low, 32:Very low, 64:Extremely low"))
     comboResolutions.getSelectionModel().selectFirst()
-    
+
     pane.add(comboResolutions, 1, row, 1, 1)
-    
-    
-    
+
     ///////////////////////
     //CLASSIFIER SETTINGS//
     ///////////////////////
-   row++ 
-   row++
-   classificationTitle = new Label("Classifier settings")
-   classificationTitle.setStyle("-fx-font-weight: bold")
-   pane.add(classificationTitle, 0,row, 2, 1)
-   
-   
-   //classifier downsample
+    row++ 
+    row++
+    classificationTitle = new Label("Classifier settings")
+    classificationTitle.setStyle("-fx-font-weight: bold")
+    pane.add(classificationTitle, 0,row, 2, 1)
+
+    //classifier downsample
     def labelResolutionsClassifier = new Label("Classifier Downsample")
     def optionsDownsampleClassifier = [1,2,4,8,16,32,64]
     def comboResolutionsClassifier = new ComboBox<>(FXCollections.observableArrayList(optionsDownsampleClassifier));
     comboResolutionsClassifier.setTooltip(new Tooltip("If Auto-Downsample is not checked \n 1:Full, 2:Very high, 4:High, 8:Moderate, 16:Low, 32:Very low, 64:Extremely low"))
     comboResolutionsClassifier.getSelectionModel().selectFirst()
-   
-   
+
     row++
     pane.add(labelResolutionsClassifier, 0, row, 1, 1)
     pane.add(comboResolutionsClassifier, 1, row, 1, 1)
-    
-    
+
    //Prefilter Options:
     prefilterOptions = ["Gaussian", "Laplacian", "Erosion","Dilation","Opening","Closing","Gradient Magnitude","Weighted_STD"]
     def comboPrefilter = new ComboBox<>(FXCollections.observableArrayList(prefilterOptions))
     comboPrefilter.getSelectionModel().selectFirst()
     def labelPrefilter = new Label("Classifier Prefilter")
     comboPrefilter.setTooltip(new Tooltip("Blurring for pixel classifier (not used in calculation of threshold)"))
-    
+
     row++
     pane.add(labelPrefilter, 0, row, 1, 1)
     pane.add(comboPrefilter, 1, row, 1, 1)
-    
+
     //Smoothing sigma
-    def sigmaSpinner = new Spinner<>(new SpinnerValueFactory.DoubleSpinnerValueFactory(0, 16.0, 0.0, 0.5));
+    def sigmaSpinner = new Spinner<>(new SpinnerValueFactory.DoubleSpinnerValueFactory(0, 16.0, 0.0, 0.5))
     sigmaSpinner.setEditable(true);
     FXUtils.restrictTextFieldInputToNumber(sigmaSpinner.getEditor(), true);
     def labelSigmaSpinner = new Label("Smoothing sigma")
     row++
     pane.add(labelSigmaSpinner, 0, row, 1, 1)
     pane.add(sigmaSpinner, 1, row, 1, 1)
-   
+
     //Above TH
     def comboAbove = new ComboBox<PathClass>(qupath.getAvailablePathClasses())
     comboAbove.getSelectionModel().select("Positive") //.selectFirst()
     comboAbove.setTooltip(new Tooltip("Above Threshold Classification"))
     def labelComboAbove = new Label("Above")
     labelComboAbove.setLabelFor(comboAbove)
-    
+
     //Below TH
     def comboBelow = new ComboBox<PathClass>(qupath.getAvailablePathClasses())
     comboBelow.getSelectionModel().selectFirst()
     comboBelow.setTooltip(new Tooltip("Below Threshold Classification"))
     def labelComboBelow = new Label("Below")
     labelComboBelow.setLabelFor(comboBelow)
-    
+
     row++
     pane.add(labelComboAbove, 0, row, 2, 1)
     pane.add(comboAbove, 1, row, 1, 1)
     row++
     pane.add(labelComboBelow, 0, row, 1, 1)
     pane.add(comboBelow, 1, row, 1, 1)
-    
-    
-    
-    
-     ////////////////////////////////////
+
+    ////////////////////////////////////
     ///////////PREVIEW/////////////////
     ///////////////////////////////////
-    
-    
-   row++
-   row++
-   previewTitle = new Label("Preview Classifier")
-   previewTitle.setStyle("-fx-font-weight: bold")
-   pane.add(previewTitle, 0,row, 2, 1)
-    
-    
+
+    row++
+    row++
+    previewTitle = new Label("Preview Classifier")
+    previewTitle.setStyle("-fx-font-weight: bold")
+    pane.add(previewTitle, 0,row, 2, 1)
+
     //Start preview
-    
-     def btnPreview = new Button("Preview")
+
+    def btnPreview = new Button("Preview")
     btnPreview.setTooltip(new Tooltip("Preview with the current settings"))
     btnPreview.setOnAction {e ->
         def hierarchy = qupath.getViewer()?.getHierarchy()
-        
-        
-               
         def selectedObject = getSelectedObject()
-        
+
         //Downsample of the img
         def downsampleAT = downsampleDecision(cbAutoDownsample,comboResolutions)
-      
-                           
-           
+
         //We apply the function to create classifier. 
         classifierPreview= classifierCreation(selectedObject,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAbove.getValue(), comboBelow.getValue())
-       
+
        //here we take the 0th element since the function returns the threshold and the classifier
         previewSegmentation(classifierPreview[0])
-        
     }
-   
-    
-    
+
     //Stop preview
-     def btnStopPreview = new Button("Stop Preview")
+    def btnStopPreview = new Button("Stop Preview")
     btnStopPreview.setTooltip(new Tooltip("Create the output for the selected objects"))
     btnStopPreview.setOnAction {e ->
-        
         stopPreviewSegmentation()
-       
     }
-    
+
     row++
     row++
     pane.add(btnPreview, 0, row, 1, 1)
     pane.add(btnStopPreview, 1, row, 1, 1)
-    
-    
-    
-    
-    
-    
+
     ///////////////////
     //POST-PROCESSING//
     ///////////////////
-   row++ 
-   row++
-   row++
-   postTitle = new Label("Post-processing settings")
-   postTitle.setStyle("-fx-font-weight: bold")
-   pane.add(postTitle, 0,row, 2, 1)
-    
-    
+    row++ 
+    row++
+    row++
+    postTitle = new Label("Post-processing settings")
+    postTitle.setStyle("-fx-font-weight: bold")
+    pane.add(postTitle, 0,row, 2, 1)
+
     //minvalue
     def minValueSpinner = new Spinner<>(new SpinnerValueFactory.DoubleSpinnerValueFactory(0, 100000.0, 0.0, 0.5));
     minValueSpinner.setEditable(true);
     FXUtils.restrictTextFieldInputToNumber(minValueSpinner.getEditor(), true);
     def labelMinValueSpinner = new Label("Min area microns^2 ")
-    
+
     row++
     pane.add(labelMinValueSpinner, 0, row, 1, 1)
     pane.add(minValueSpinner, 1, row, 1, 1)
-    
+
     //min holes
     def minHoleSpinner = new Spinner<>(new SpinnerValueFactory.DoubleSpinnerValueFactory(0, 100000.0, 0.0, 0.5));
     minHoleSpinner.setEditable(true);
     FXUtils.restrictTextFieldInputToNumber(minHoleSpinner.getEditor(), true);
     def labelminHoleSpinner = new Label("Min hole area microns^2 ")
-    
+
     row++
     pane.add(labelminHoleSpinner, 0, row, 1, 1)
     pane.add(minHoleSpinner, 1, row, 1, 1)
-    
-    
+
     //SPLIT
     def cbSplit= new CheckBox("Split Objects")
     cbSplit.setSelected(false)
     cbSplit.setTooltip(new Tooltip("Split Objects."))
 
-    row++;
+    row++
     pane.add(cbSplit, 0, row, 1, 1)
-    
+
     //Delete exisiting
     def cbDeleteActual= new CheckBox("Delete Objects Inside")
     cbDeleteActual.setSelected(false)
     cbDeleteActual.setTooltip(new Tooltip("Delete objects inside the actual annotations"))
 
-    
     pane.add(cbDeleteActual, 1, row, 1, 1)
-    
-    
-    
+
     //Include ignored
     def cbIncludeIgnored= new CheckBox("Include ignored")
     cbIncludeIgnored.setSelected(false)
@@ -364,132 +313,112 @@ ScrollPane buildPane() {
 
     row++
     pane.add(cbIncludeIgnored, 0, row, 1, 1)
-    
+
     //Select new
     def cbSelectNew= new CheckBox("Select New Objects")
     cbSelectNew.setSelected(false)
     cbSelectNew.setTooltip(new Tooltip("Select the new objects"))
 
-    
     pane.add(cbSelectNew, 1, row, 1, 1)
-    
+
     //Delete parent
     def cbDeleteParent= new CheckBox("Delete Parent")
     cbDeleteParent.setSelected(false)
     cbDeleteParent.setTooltip(new Tooltip("If checked, the original annotations are deleted."))
 
-    row++;
+    row++
     pane.add(cbDeleteParent, 0, row, 1, 1)
-    
 
-   ////////////////////
-   //OUTPUT SELECTION//
-   ////////////////////
-   row++
-   row++
-   row++
-   actionsTitle = new Label("Output")
-   actionsTitle.setStyle("-fx-font-weight: bold")
-   pane.add(actionsTitle, 0,row, 2, 1)
-   
-   
-   
-   //output type selection
-   //AutoTH Methods
+    ////////////////////
+    //OUTPUT SELECTION//
+    ////////////////////
+    row++
+    row++
+    row++
+    actionsTitle = new Label("Output")
+    actionsTitle.setStyle("-fx-font-weight: bold")
+    pane.add(actionsTitle, 0, row, 2, 1)
+
+    //output type selection
+    //AutoTH Methods
     def optionsOutput = ["Annotation", "Detection", "Measurement", "Threshold value"]
     def comboOutput = new ComboBox<>(FXCollections.observableArrayList(optionsOutput))
     comboOutput.getSelectionModel().selectFirst()
     comboOutput.setTooltip(new Tooltip("Choose the desired type of output"))
     def labelComboOutput = new Label("New Object")
     labelComboOutput.setLabelFor(comboOutput)
-    
 
     row++
     pane.add(labelComboOutput, 0, row, 1, 1)
     pane.add(comboOutput, 1, row, 1, 1)
-    
-
 
     ////////////////////
-   //RUNNING OPTION 1//
-   ////////////////////
-    
+    //RUNNING OPTION 1//
+    ////////////////////
+
     row++
     row++
     row++
     runningTitle1 = new Label("Running Option 1: Run For Parent Class")
     runningTitle1.setStyle("-fx-font-weight: bold")
     pane.add(runningTitle1, 0,row, 2, 1)
-   
 
-   
-   //selectParent classificaiton
-    
+    //selectParent classificaiton
+
     def comboParent = new ComboBox<PathClass>(qupath.getAvailablePathClasses())
     comboParent.getSelectionModel().selectFirst()
     comboParent.setTooltip(new Tooltip("Choose parent classification"))
     def labelcomboParent = new Label("Parent Classification")
     labelcomboParent.setLabelFor(comboParent)
     row++
-   
+
     pane.add(labelcomboParent, 0, row, 1, 1)
     pane.add(comboParent, 1, row, 1, 1)
-    
-   
-   row++
-   row++
-   
-   
+
+    row++
+    row++
+
     def btnRunParents = new Button("Run for Parents")
     btnRunParents.setTooltip(new Tooltip("Create the output for the parents with a calssification"))
-   
+
     btnRunParents.setOnAction {e ->
         def hierarchy = qupath.getViewer()?.getHierarchy()
-        
+
         //funciton to decide at the end, basically gets the objects with the selected class
         def objects = decisionParent(comboParent.getValue().toString())
-        
-              
+
         //Downsample of the img
         def downsampleAT = downsampleDecision(cbAutoDownsample,comboResolutions)
-      
+
         //Post processing selection. function at the end. 
         postProcessingOptions = postProcessingSelection(cbSplit,cbDeleteActual,cbIncludeIgnored,cbSelectNew)
-              
-        
-        for(object in objects) {
-          
-          selectObjects(object)
-          
-          classifierPX= classifierCreation(object,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAbove.getValue(), comboBelow.getValue())
-          
-          actionRunClassifier(object,combo.getValue(),classifierPX[0],classifierPX[1],comboOutput.getValue(),minValueSpinner.getValue(), minHoleSpinner.getValue(), postProcessingOptions.join(','),comboAbove.getValue(), comboBelow.getValue())
+
+        for (object in objects) {
+            selectObjects(object)
+
+            classifierPX= classifierCreation(object,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAbove.getValue(), comboBelow.getValue())
+            actionRunClassifier(object,combo.getValue(),classifierPX[0],classifierPX[1],comboOutput.getValue(),minValueSpinner.getValue(), minHoleSpinner.getValue(), postProcessingOptions.join(','),comboAbove.getValue(), comboBelow.getValue())
         }
         
         //Delete parents
-        
         if(cbDeleteParent.isSelected()== true) {
-           removeObjects(objects, true) 
+            removeObjects(objects, true) 
         }
-                                       
-       
     }
     
     row++;
     pane.add(btnRunParents, 0, row, 2, 1)
     
 
-   ////////////////////
-   //RUNNING OPTION 2//
-   ////////////////////
-   row++
-   row++
-   row++
-   runningTitle2 = new Label("Running Option 2: Run For Selected")
-   runningTitle2.setStyle("-fx-font-weight: bold")
-   pane.add(runningTitle2, 0,row, 2, 1)
-   
-    
+    ////////////////////
+    //RUNNING OPTION 2//
+    ////////////////////
+    row++
+    row++
+    row++
+    runningTitle2 = new Label("Running Option 2: Run For Selected")
+    runningTitle2.setStyle("-fx-font-weight: bold")
+    pane.add(runningTitle2, 0,row, 2, 1)
     
     def btnSelected = new Button("Run for Selected")
     btnSelected.setTooltip(new Tooltip("Create the output for the selected objects"))
@@ -497,7 +426,6 @@ ScrollPane buildPane() {
         def hierarchy = qupath.getViewer()?.getHierarchy()
         
         //funciton to decide at the end, basically gets the objects with the selected class
-               
         def objects = getSelectedObjects()
               
         //Downsample of the img
@@ -505,30 +433,22 @@ ScrollPane buildPane() {
       
         //Post processing selection. function at the end. 
         postProcessingOptions = postProcessingSelection(cbSplit,cbDeleteActual,cbIncludeIgnored,cbSelectNew)
-              
         
-        for(object in objects) {
-            
-          
-          selectObjects(object)
-          classifierPX= classifierCreation(object,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAbove.getValue(), comboBelow.getValue())
-          
-          actionRunClassifier(object,combo.getValue(),classifierPX[0],classifierPX[1],comboOutput.getValue(),minValueSpinner.getValue(), minHoleSpinner.getValue(), postProcessingOptions.join(','),comboAbove.getValue(), comboBelow.getValue())
+        for (object in objects) {
+            selectObjects(object)
+            classifierPX= classifierCreation(object,  comboChannel.getValue(), downsampleAT, combo.getValue(), floorValueSpinner.getValue(), comboResolutionsClassifier.getValue(),comboPrefilter.getValue(),sigmaSpinner.getValue(), comboAbove.getValue(), comboBelow.getValue())
+            actionRunClassifier(object,combo.getValue(),classifierPX[0],classifierPX[1],comboOutput.getValue(),minValueSpinner.getValue(), minHoleSpinner.getValue(), postProcessingOptions.join(','),comboAbove.getValue(), comboBelow.getValue())
         }
         
         //Delete parents
-        
         if(cbDeleteParent.isSelected()== true) {
-           removeObjects(objects, true) 
+            removeObjects(objects, true) 
         }
        
     }
     
-    
     row++
     pane.add(btnSelected, 0, row, 2, 1)
-    
-
    
     pane.setHgap(10)
     pane.setVgap(5)
@@ -539,14 +459,9 @@ ScrollPane buildPane() {
     return sp
 }
 
-
-
-
-
 //////////////////////////
 //AUTO TH FUNCTIONS///////
 //////////////////////////
-
 
 import qupath.lib.images.servers.TransformedServerBuilder
 import qupath.lib.roi.interfaces.ROI
@@ -579,12 +494,12 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
 
     if (imageType.toString().contains("Brightfield")) {
         def stains = imageData.getColorDeconvolutionStains()
-        def colors =getCurrentServer().getMetadata().getChannels()
+        //def colors = getCurrentServer().getMetadata().getChannels()
 
         if (channel == "Hematoxylin") {
             server = new TransformedServerBuilder(server).deconvolveStains(stains, 1).build()
             classifierChannel = ColorTransforms.createColorDeconvolvedChannel(stains, 1)
-        } else if (channel == "Eosin" | channel == "DAB") {
+        } else if (channel == "Eosin" || channel == "DAB") {
             //@I Vieco-Martí: Simple modification: for H&E the second is Eosin for H-DAB the second is DAB
             server = new TransformedServerBuilder(server).deconvolveStains(stains, 2).build()
             classifierChannel = ColorTransforms.createColorDeconvolvedChannel(stains, 2)
@@ -647,7 +562,6 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
     // Define parameters for pixel classifier
     def resolution = cal.createScaledInstance(classifierDownsample, classifierDownsample)
     
-    
    //compute radius for some filters and select the filter type
    
    //@I Vieco-Martí: I added all the filters. the structure is the same as here: 
@@ -655,29 +569,23 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
    
    int radius = (int)Math.round(prefilterSigma * 2)
    
-   
-   if(prefilterType == "Gaussian") {
-       prefilter = ImageOps.Filters.gaussianBlur(prefilterSigma)
-       
-   }else if(prefilterType == "Laplacian") {
-       prefilter = ImageOps.Filters.features(Collections.singletonList(MultiscaleFeature.LAPLACIAN), prefilterSigma, prefilterSigma)
-       
-   }else if(prefilterType == "Erosion") {
-       prefilter = ImageOps.Filters.minimum(radius)
-       
-   }else if(prefilterType == "Dilation") {
+    if(prefilterType == "Gaussian") {
+        prefilter = ImageOps.Filters.gaussianBlur(prefilterSigma)
+    } else if(prefilterType == "Laplacian") {
+        prefilter = ImageOps.Filters.features(Collections.singletonList(MultiscaleFeature.LAPLACIAN), prefilterSigma, prefilterSigma)
+    } else if(prefilterType == "Erosion") {
+        prefilter = ImageOps.Filters.minimum(radius)
+    } else if(prefilterType == "Dilation") {
         prefilter = ImageOps.Filters.maximum(radius)
-       
-   }else if(prefilterType == "Opening") {
-       prefilter =ImageOps.Filters.opening(radius)
-   }else if(prefilterType == "Closing") {
-       prefilter =ImageOps.Filters.closing(radius) 
-   } else if(prefilterType == "Gradient Magnitude") {
+    } else if(prefilterType == "Opening") {
+        prefilter =ImageOps.Filters.opening(radius)
+    } else if(prefilterType == "Closing") {
+        prefilter =ImageOps.Filters.closing(radius) 
+    } else if(prefilterType == "Gradient Magnitude") {
         prefilter =ImageOps.Filters.features(Collections.singletonList(MultiscaleFeature.GRADIENT_MAGNITUDE), prefilterSigma, prefilterSigma)
-   }else if(prefilterType == "Weighted_STD") {
-       prefilter = ImageOps.Filters.features(Collections.singletonList(MultiscaleFeature.WEIGHTED_STD_DEV), prefilterSigma, prefilterSigma)
-       
-   }
+    } else if(prefilterType == "Weighted_STD") {
+        prefilter = ImageOps.Filters.features(Collections.singletonList(MultiscaleFeature.WEIGHTED_STD_DEV), prefilterSigma, prefilterSigma)
+    }
     //def prefilter = ImageOps.Filters.gaussianBlur(classifierGaussianSigma)
 
     List<ImageOp> ops = new ArrayList<>()
@@ -717,15 +625,11 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
     )
     
     return [classifier,thresholdValue] 
-    
  }
- 
  
  //This funciton creates all the outputs listed
  def actionRunClassifier(annotation,thresholdMethod,classifier,thresholdValue,output,minArea, minHoleArea, classifierObjectOptions,classificationAbove,classificationBelow ) {
-     
-     // Apply classifier
-    //selectObjects(annotation)
+    // Apply classifier
     if (output == "Annotation") {
         logger.info("Creating annotations in ${annotation} from ${thresholdMethod}: ${thresholdValue}")
        
@@ -767,8 +671,6 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
         def measurementID = "${thresholdMethod} threshold"
         addPixelClassifierMeasurements(classifier, measurementID)
     }
-    
-   
     if (classificationBelow == null) {
         annotation.measurements.put("${thresholdMethod}: ${classificationAbove.toString()} threshold value", thresholdValue)
     }
@@ -779,109 +681,76 @@ def classifierCreation(annotation, channel, thresholdDownsample, thresholdMethod
         annotation.measurements.put("${thresholdMethod} threshold value", thresholdValue)
     }
     
-    
     // If specified output is "threshold value, return threshold value in annotation measurements
     if (output == "Threshold value") {
         logger.info("${thresholdMethod} threshold value: ${thresholdValue}")
         annotation.measurements.put("${thresholdMethod} threshold value", thresholdValue)
         return
     }
-    
-    
  }
- 
- 
- 
- 
 
 //@I Vieco-Martí: this is for the selection of Auto-Downsample or just the user Downsample
 def downsampleDecision(cbAutoDownsample,comboResolutions) {
     //Set the downsample according to user decision.
-        def downsampleAT = 0
-        if(cbAutoDownsample.isSelected()== true) {
-           def viewer = getCurrentViewer()
-           downsampleAT = viewer.getDownsampleFactor()
-       
-        }else {
-            downsampleAT = comboResolutions.getValue()
-        } 
-        
-        return downsampleAT
+    def downsampleAT = 0
+    if (cbAutoDownsample.isSelected()== true) {
+        def viewer = getCurrentViewer()
+        downsampleAT = viewer.getDownsampleFactor()
+    } else {
+        downsampleAT = comboResolutions.getValue()
+    } 
+    return downsampleAT
 }
-
-
-
-
 
 //@I Vieco-Martí: this is to fit the post-processing into the functionality
 def postProcessingSelection(split, delete, include, selectNew) {
+    def classifierObjectOptions =[]
    
-   def classifierObjectOptions =[]
+    if (split.isSelected()== true) {
+        tag1 = "SPLIT"
+        classifierObjectOptions << tag1
+    }
    
-   if(split.isSelected()== true) {
-       
-       tag1 = "SPLIT"
-       classifierObjectOptions <<tag1
-       
-   }
+    if (delete.isSelected()== true) {
+        tag2 = "DELETE_EXISTING"
+        classifierObjectOptions << tag2
+    }
    
-   if(delete.isSelected()== true) {
-       
-       tag2 = "DELETE_EXISTING"
-       classifierObjectOptions <<tag2
-       
-   }
+    if (include.isSelected()== true) {
+        tag3 = "INCLUDE_IGNORED"
+        classifierObjectOptions << tag3
+    }
    
-   if(include.isSelected()== true) {
-       
-       tag3 = "INCLUDE_IGNORED"
-       classifierObjectOptions <<tag3
-       
-       
-   }
-   
-   if(selectNew.isSelected()== true) {
-       
-       tag4 = "SELECT_NEW"
-       classifierObjectOptions << tag4
-       
-       
-   }
+    if (selectNew.isSelected()== true) {
+        tag4 = "SELECT_NEW"
+        classifierObjectOptions << tag4
+    }
    
    return classifierObjectOptions
-   
-   
-   
 }
 
 //@I Vieco-Martí: this is to select the parent, when Run for Parents
 
 def decisionParent(parentClassification) {
     def objects =[]
-   if(parentClassification == "Unclassified") {
-      noClass = getAnnotationObjects().findAll {
-         it.getPathClass() == null 
-      }
-      noClass.forEach {
-         objects << it 
-      }
-     
+    if (parentClassification == "Unclassified") {
+        noClass = getAnnotationObjects().findAll {
+            it.getPathClass() == null 
+        }
+        noClass.forEach {
+            objects << it 
+        }
+    } else {
+        yesClass = getAnnotationObjects().findAll {
+            it.getPathClass() == getPathClass(parentClassification) 
+        }
       
-   }else {
-      yesClass = getAnnotationObjects().findAll {
-         it.getPathClass() == getPathClass(parentClassification) 
-      }
-      
-      yesClass.forEach {
-         objects<<it 
-      }
-          
-      
+        yesClass.forEach {
+            objects << it 
+        }
    }
-   
    return objects
 }
-
 
 import qupath.lib.gui.viewer.overlays.PixelClassificationOverlay
 import qupath.lib.gui.viewer.OverlayOptions
@@ -892,29 +761,18 @@ import qupath.lib.gui.viewer.RegionFilter
 //This function creates the overlay just into the annotations
 //Needs a classifier as input. 
 def previewSegmentation(classifier) {
-     
-          
-        def quPath = QuPathGUI.getInstance()
-        OverlayOptions overlayOption = quPath.getOverlayOptions()
-        overlayOption.setPixelClassificationRegionFilter(RegionFilter.StandardRegionFilters.EVERYWHERE)
+    def quPath = QuPathGUI.getInstance()
+    OverlayOptions overlayOption = quPath.getOverlayOptions()
+    overlayOption.setPixelClassificationRegionFilter(RegionFilter.StandardRegionFilters.EVERYWHERE)
     
-        PixelClassificationOverlay previewOverlay = PixelClassificationOverlay.create(overlayOption, classifier)
-        previewOverlay.setLivePrediction(true)
-        quPath.getViewer().setCustomPixelLayerOverlay(previewOverlay)
-    
-    
-    
-     
- }
+    PixelClassificationOverlay previewOverlay = PixelClassificationOverlay.create(overlayOption, classifier)
+    previewOverlay.setLivePrediction(true)
+    quPath.getViewer().setCustomPixelLayerOverlay(previewOverlay)
+}
  
- 
- //This function turns off the preview. It is important to set the region filters to Everywhere, to not interfer with other classifier Overlay functions.
- def stopPreviewSegmentation() {
-          
-       def quPath = QuPathGUI.getInstance()
-       quPath.getOverlayOptions().setPixelClassificationRegionFilter(RegionFilter.StandardRegionFilters.EVERYWHERE)
-       quPath.getViewer().resetCustomPixelLayerOverlay()
-  
-     
- }
- 
+//This function turns off the preview. It is important to set the region filters to Everywhere, to not interfer with other classifier Overlay functions.
+def stopPreviewSegmentation() {
+    def quPath = QuPathGUI.getInstance()
+    quPath.getOverlayOptions().setPixelClassificationRegionFilter(RegionFilter.StandardRegionFilters.EVERYWHERE)
+    quPath.getViewer().resetCustomPixelLayerOverlay()
+}
